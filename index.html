@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset=utf-8 />
+<title>Night Munch</title>
+<meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+<script src='https://api.tiles.mapbox.com/mapbox.js/v2.1.8/mapbox.js'></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+<link href='https://api.tiles.mapbox.com/mapbox.js/v2.1.8/mapbox.css' rel='stylesheet' />
+<style>
+  body { margin:0; padding:0; }
+  #map { position:absolute; top:0; bottom:0; width:100%; }
+
+.my-icon {
+  border-radius: 100%;
+  width: 50px;
+  height: 50px;
+  text-align: center;
+  line-height: 20px;
+  color: white;
+  background: #63b6e5;
+  opacity:0.01;
+}
+
+  .custom-popup .leaflet-popup-content-wrapper {
+	  background:#222930;
+	  color:#969899;
+	  font-size:16px;
+	  line-height:24px;
+  }
+  .custom-popup .leaflet-popup-content-wrapper a {
+	  color:rgba(255,255,255,0.5);
+  }
+  .custom-popup .leaflet-popup-tip-container {
+	  width:30px;
+	  height:15px;
+  }
+  .custom-popup .leaflet-popup-tip {
+	  border-left:15px solid transparent;
+	  border-right:15px solid transparent;
+	  border-top:15px solid #2c3e50;
+  }
+
+</style>
+</head>
+<body>
+
+<script src='https://api.tiles.mapbox.com/mapbox.js/plugins/leaflet-heat/v0.1.3/leaflet-heat.js'></script>
+<div class='custom-popup' id='map'></div>
+
+<script>
+
+var pinkHeat = {
+  1.0: '#FD2560',
+  0.75:'#FE6790',
+  0.6:'#000000',
+  0.5: '#FE92AF',
+  0.12:'#000000',
+  0.1: '#FEBDCF'};
+
+var heat1 =  {
+  1.0: '#DC2B00',
+  0.8:'#FF6C00',
+  0.6:'#FFD500',
+  0.2:'#00C752',
+  0: '#0090E9'};
+
+  var heat2 =  {
+    1.0: '#FFAA00',
+    0.8:'#FFD500',
+    0.6:'#ADE900',
+    0.5:'#00C752',
+    0.2: '#0090E9'};
+
+  var heat3 =  {
+    1.0: '#63DC16',
+    0.8:'#00C752',
+    0.6:'#00BEA4',
+    0.4:'#00B7D3',
+    0.2: '#0090E9'};
+
+  var heat4 =  {
+    1.0: '#00B7D3',
+    0.8:'#0090E9',
+    0.6:'#2861FF',
+    0.4:'#2F4EFD',
+    0.2: '#6100E9'};
+
+L.mapbox.accessToken = 'pk.eyJ1IjoicGVzdHJvdiIsImEiOiJaWjl1OEZNIn0._BnCnZadFvmipMID7jK1iw';
+// As with any other AJAX request, this technique is subject to the Same Origin Policy:
+// http://en.wikipedia.org/wiki/Same_origin_policy
+var map = L.mapbox.map('map', 'pestrov.m0plk0cf');
+currentData = []
+currentDataIds = []
+newDataIds = []
+newData = []
+newHeats = []
+heat = null
+allHeats = []
+firstInit = 1
+setInterval(function(){
+
+$.getJSON('http://nightmunch.appsbackend.com/api/venue/', function( data ) {
+  var layer = map.featureLayer;
+  layer.eachLayer(function(marker) {
+    map.removeLayer(marker);
+  });
+
+  for (i = 0; i < allHeats.length; i++) {
+    heat = allHeats[i];
+    map.removeLayer(heat);
+  }
+
+  // layer.eachLayer(function(marker) {
+  //   if (newDataIds.indexOf(marker.feature.properties.venue) != -1)
+  //       console.log(marker.feature.properties.venue);
+  // });
+  //
+  // newDataIds = []
+  // newData = []
+  // newHeats = []
+  //
+  // for (i = 0; i < data.length; i++) {
+  //   var feature = data[i];
+  //   if (currentDataIds.indexOf(feature.properties.venue) == -1) {
+  //
+  //     newDataIds.push(feature.properties.venue);
+  //     newData.push(feature);
+  //     currentData.push(feature);
+  //     currentDataIds.push(feature.properties.venue);
+  //   }
+  // }
+
+	if (data.status != 'success') {
+		return false;
+	}
+
+  if (data.data.length) {
+    layer.setGeoJSON(data.data);
+    if (firstInit) {
+      firstInit = 0
+      map.fitBounds(layer.getBounds());
+    }
+    map.featureLayer.eachLayer(function(marker) {
+
+      var content = '<p>' + marker.feature.properties.venueName + '<\/p>' +
+      '<p>Heat: ' + Math.round(marker.feature.properties.heat*10000)/100 +'<br>' +'<\/p>';
+      var icon =  {
+          "className": "my-icon", // class name to style
+          "iconSize": null, // size of icon, use null to set the size in CSS
+          "iconAnchor": [30, 30]
+        };
+
+      marker.setIcon(L.divIcon(icon));
+      marker.bindPopup(content, {
+          closeButton: false,
+		  'maxWidth': '500',
+		  'className' : 'custom-popup'
+      });
+
+      marker.on('click', function(e) {
+          // $(function () {
+          //     $("#travel-div").load(getPage(marker)).hide().fadeIn('slow');
+          // });
+          });
+
+        var currentHeat = marker.feature.properties.heat;
+        var heatMap;
+        if (currentHeat > 0.24) {
+          heatMap = heat1;
+        } else if (currentHeat > 0.13){
+          heatMap = heat2;
+        } else if (currentHeat > 0.05){
+          heatMap = heat3;
+        } else {
+          heatMap = heat4;
+        }
+        heat = L.heatLayer([marker.getLatLng()], { maxZoom: 14, gradient:heatMap, max:currentHeat}).addTo(map);
+        allHeats.push(heat);
+      });
+    }
+});
+}, 3000);
+
+
+// var layer = L.mapbox.featureLayer().loadURL('http://nightmunch-data.appsbackend.com/oneplace.json').on('ready', function() {
+//
+//   layer.eachLayer(function(l) {
+//   var content = '<p>Heat: ' + l.feature.properties.heat + '<\/p>';
+//   console.log(content);
+//   console.log(typeof(l));
+//   l.bindPopup(content);
+// });
+// });
+
+</script>
+
+
+</body>
+</html>
