@@ -5,55 +5,170 @@
 <title>Get me a dolla</title>
 <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
 <script src='https://api.mapbox.com/mapbox.js/v2.2.4/mapbox.js'></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
 <link href='https://api.mapbox.com/mapbox.js/v2.2.4/mapbox.css' rel='stylesheet' />
 <style>
   body { margin:0; padding:0; }
   #map { position:absolute; top:0; bottom:0; width:100%; }
+  #currency { position:fixed; right: 10px; z-index: 100500}
 </style>
+
 </head>
 <body>
+    
+<style>
+.menu-ui {
+  background:#fff;
+  position:absolute;
+  top:10px;right:10px;
+  z-index:1;
+  border-radius:3px;
+  width:120px;
+  border:1px solid rgba(0,0,0,0.4);
+  }
+  .menu-ui a {
+    font-size:13px;
+    color:#404040;
+    display:block;
+    margin:0;padding:0;
+    padding:10px;
+    text-decoration:none;
+    border-bottom:1px solid rgba(0,0,0,0.25);
+    text-align:center;
+    }
+    .menu-ui a:first-child {
+      border-radius:3px 3px 0 0;
+      }
+    .menu-ui a:last-child {
+      border:none;
+      border-radius:0 0 3px 3px;
+      }
+    .menu-ui a:hover {
+      background:#f8f8f8;
+      color:#404040;
+      }
+    .menu-ui a.active {
+      background:#3887BE;
+      color:#FFF;
+      }
+      .menu-ui a.active:hover {
+        background:#3074a4;
+        }
+</style>
+<nav id='menu-ui' class='menu-ui'></nav>
+
 <div id='map'></div>
 
 <script>
+
 L.mapbox.accessToken = 'pk.eyJ1IjoieGdmcyIsImEiOiJjaWpwYjBzbm0wMDZ4dm9seG1iaTU1YnF0In0.dsMMPAU5g70pFVy9TLunSA';
 var map = L.mapbox.map('map', 'mapbox.streets')
-    .setView([55.75222, 37.61556], 10);
+    .setView([55.75222, 37.61556], 11);
 
+var layers = document.getElementById('menu-ui');
+var dollarLayer = L.mapbox.featureLayer().addTo(map);
+var euroLayer = L.mapbox.featureLayer().addTo(map);
 
-var myLayer = L.mapbox.featureLayer().addTo(map);
-
-var geojson = {
+var dollar_geojson = {
     type: 'FeatureCollection',
     features: [
       {% if results %}
 
       {% for result in results%}
+      
+      {% if result['currency'] == 1 %}
         {
         type: 'Feature',
         properties: {
             title: '{{result['title']}}',
             description: 'Покупка: {{result['pok']}} <br> Продажа: {{result['prod']}} <br> Адрес: {{result['address']}} <br> Тел.: {{result['tel']}} <br> Время: {{result['time']}} ',
             'marker-color': '{{result['color']}}',
-            'marker-size': 'large',
-            //url: 'http://en.wikipedia.org/wiki/Washington,_D.C.'
+            'marker-size': 'large'
         },
         geometry: {
             type: 'Point',
             coordinates: [{{result['long']}}, {{result['lat']}}]
         }
     },
+    {% endif %}
       {% endfor %}
       {% endif %}
     ]
 };
 
-myLayer.setGeoJSON(geojson);
-myLayer.on('mouseover', function(e) {
+var euro_geojson = {
+    type: 'FeatureCollection',
+    features: [
+      {% if results %}
+
+      {% for result in results%}
+      {% if result['currency'] == 2 %}
+      
+        {
+        type: 'Feature',
+        properties: {
+            title: '{{result['title']}}',
+            description: 'Покупка: {{result['pok']}} <br> Продажа: {{result['prod']}} <br> Адрес: {{result['address']}} <br> Тел.: {{result['tel']}} <br> Время: {{result['time']}} ',
+            'marker-color': '{{result['color']}}',
+            'marker-size': 'large'
+        },
+        geometry: {
+            type: 'Point',
+            coordinates: [{{result['long']}}, {{result['lat']}}]
+        }
+    },
+    {% endif %}
+      {% endfor %}
+      {% endif %}
+    ]
+};
+
+dollarLayer.setGeoJSON(dollar_geojson);
+dollarLayer.on('mouseover', function(e) {
     e.layer.openPopup();
 });
-myLayer.on('mouseout', function(e) {
+dollarLayer.on('mouseout', function(e) {
     e.layer.closePopup();
 });
+
+euroLayer.setGeoJSON(euro_geojson);
+euroLayer.on('mouseover', function(e) {
+    e.layer.openPopup();
+});
+euroLayer.on('mouseout', function(e) {
+    e.layer.closePopup();
+});
+
+addLayer(dollarLayer, 'dollar', 2);
+addLayer(euroLayer, 'euro', 1);
+
+function addLayer(layer, name, zIndex) {
+    layer
+        .setZIndex(zIndex)
+        .addTo(map);
+
+    // Create a simple layer switcher that
+    // toggles layers on and off.
+    var link = document.createElement('a');
+        link.href = '#';
+        link.className = 'active';
+        link.innerHTML = name;
+
+    link.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (map.hasLayer(layer)) {
+            map.removeLayer(layer);
+            this.className = '';
+        } else {
+            map.addLayer(layer);
+            this.className = 'active';
+        }
+    };
+
+    layers.appendChild(link);
+}
 </script>
 </body>
 </html>
